@@ -2,12 +2,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, CalendarDays, Phone, CheckCircle2, XCircle, Play, Flag, Star, Wallet, Ban } from 'lucide-react';
+import { ArrowLeft, MapPin, CalendarDays, Phone, CheckCircle2, XCircle, Play, Flag, Star, Wallet, Ban, Receipt as ReceiptIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Alert, Spinner, Stars } from './ui';
 import { Chat } from './Chat';
 import { PayModal } from './PayModal';
+import { ReceiptModal, buildReceipt } from './Receipt';
 import { ksh, statusMeta, unitLabel } from '@/lib/utils';
 import type { Booking } from '@/lib/types';
 
@@ -21,7 +22,10 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
   const [other, setOther] = useState<Party>(null);
   const [review, setReview] = useState<{ rating: number; comment: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pay, setPay] = useState(false);
+  const [payKind, setPayKind] = useState<null | 'deposit' | 'balance'>(null);
+  const [receipt, setReceipt] = useState(false);
+  const [paidBalance, setPaidBalance] = useState(false);
+  const [payments, setPayments] = useState<any[]>([]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [rate, setRate] = useState(5);
@@ -39,13 +43,15 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
       }
       const { data: r } = await supabase.from('reviews').select('rating, comment').eq('booking_id', id).maybeSingle();
       setReview(r);
+      const { data: pm } = await supabase.from('payments').select('*').eq('booking_id', id).eq('status', 'paid').order('created_at');
+      setPayments(pm || []);
     }
     setB(data as Booking | null);
     setLoading(false);
   }, [id, role]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (b && role === 'customer' && sp.get('pay') && !b.deposit_paid) setPay(true); }, [b?.id]); // eslint-disable-line
+  useEffect(() => { if (b && role === 'customer' && sp.get('pay') && !b.deposit_paid) setPayKind('deposit'); }, [b?.id]); // eslint-disable-line
 
   useEffect(() => {
     const ch = supabase.channel('booking-' + id)
@@ -72,6 +78,7 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
   };
 
   const sm = statusMeta[b.status];
+  const balance = Math.max(b.estimated_price - b.deposit_amount, 0);
   const svc = b.services!;
   const parties: any[] = (b as any)._parties || [];
   const customerP = parties.find((p) => p.id === b.customer_id);
@@ -97,7 +104,23 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
         <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-gold bg-gold-50 p-5">
           <div className="flex items-center gap-3"><Wallet className="h-8 w-8 text-gold-700" />
             <div><p className="font-display text-xl uppercase">Pay your deposit to confirm</p><p className="text-sm text-forest-600">{ksh(b.deposit_amount)} unlocks chat and sends your request to the provider.</p></div></div>
-          <button className="btn-gold" onClick={() => setPay(true)}>Pay {ksh(b.deposit_amount)}</button>
+          <button className="btn-gold" onClick={() => setPayKind('deposit')}>Pay {ksh(b.deposit_amount)}</button>
+        </div>
+      )}
+
+      {/* Balance prompt after the job is completed */}
+      {role === 'customer' && b.status === 'completed' && b.deposit_paid && !b.balance_paid && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-forest bg-forest-50 p-5">
+          <div className="flex items-center gap-3"><ReceiptIcon className="h-8 w-8 text-forest" />
+            <div><p className="font-display text-xl uppercase">Job complete. Pay the balance</p><p className="text-sm text-forest-600">Pay {ksh(balance)} to finish. Your receipt prints right after.</p></div></div>
+          <button className="btn-primary" onClick={() => setPayKind('balance')}>Pay {ksh(balance)}</button>
+        </div>
+      )}
+      {role !== 'employee' && b.balance_paid && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-gold bg-gold-50 p-5">
+          <div className="flex items-center gap-3"><ReceiptIcon className="h-8 w-8 text-gold-700" />
+            <div><p className="font-display text-xl uppercase">Paid in full</p><p className="text-sm text-forest-600">Receipt {b.receipt_no || ''}</p></div></div>
+          <button className="btn-gold" onClick={() => setReceipt(true)}><ReceiptIcon className="h-4 w-4" />View receipt</button>
         </div>
       )}
 
@@ -122,7 +145,7 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
             <div className="space-y-1 text-sm">
               <p className="flex justify-between"><span>Service price ({svc.price_note.toLowerCase()})</span><b>{ksh(b.estimated_price)} {unitLabel[svc.price_unit] && b.quantity > 1 ? '' : ''}</b></p>
               <p className="flex justify-between"><span>Deposit</span><b className={b.deposit_paid ? 'text-green-700' : 'text-gold-700'}>{ksh(b.deposit_amount)} · {b.deposit_paid ? 'Paid ✓' : 'Not paid'}</b></p>
-              <p className="flex justify-between text-forest-500"><span>Balance after service</span><span>{ksh(Math.max(b.estimated_price - b.deposit_amount, 0))}</span></p>
+              <p className={`flex justify-between ${b.balance_paid ? '' : 'text-forest-500'}`}><span>Balance after service</span><b className={b.balance_paid ? 'text-green-700' : ''}>{ksh(balance)}{b.balance_paid ? ' · Paid ✓' : ''}</b></p>
             </div>
           </div>
 
@@ -153,6 +176,7 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
                 {Object.entries(statusMeta).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
               {!b.deposit_paid && <button className="btn-ghost" onClick={async () => { if (confirm('Mark deposit as paid manually?')) { await supabase.from('bookings').update({ deposit_paid: true }).eq('id', b.id); load(); } }}>Mark deposit paid manually</button>}
+              {b.status === 'completed' && b.deposit_paid && !b.balance_paid && <button className="btn-ghost" onClick={async () => { if (confirm('Mark the balance as paid manually (e.g. cash)? This issues the receipt.')) { const { error } = await supabase.from('bookings').update({ balance_paid: true }).eq('id', b.id); if (error) setErr(error.message); load(); } }}>Mark balance paid manually</button>}
             </div>
           )}
 
@@ -187,11 +211,27 @@ export function BookingDetail({ id, role, backHref }: { id: string; role: 'custo
               <p><b>Provider:</b> {employeeP?.full_name} · {employeeP?.phone}</p>
             </div>
           )}
-          <Chat bookingId={b.id} meId={profile!.id} unlocked={b.deposit_paid} role={role} readOnly={role === 'admin'} onUnlock={() => setPay(true)} />
+          <Chat bookingId={b.id} meId={profile!.id} unlocked={b.deposit_paid} role={role} readOnly={role === 'admin'} onUnlock={() => setPayKind('deposit')} />
         </div>
       </div>
 
-      {role === 'customer' && <PayModal open={pay} onClose={() => { setPay(false); router.replace(`/customer/bookings/${b.id}`); }} booking={b} defaultPhone={profile?.phone} onPaid={load} />}
+      {role === 'customer' && (
+        <PayModal
+          open={!!payKind} kind={payKind ?? 'deposit'} bookingId={b.id}
+          amount={payKind === 'balance' ? balance : b.deposit_amount} total={b.estimated_price} defaultPhone={profile?.phone}
+          onPaid={() => { if (payKind === 'balance') setPaidBalance(true); load(); }}
+          onClose={() => {
+            setPayKind(null); router.replace(`/customer/bookings/${b.id}`);
+            if (paidBalance) { setPaidBalance(false); setReceipt(true); }   // balance paid -> print the receipt
+          }}
+        />
+      )}
+      {receipt && b.balance_paid && role !== 'employee' && (
+        <ReceiptModal
+          onClose={() => setReceipt(false)}
+          data={buildReceipt(b, payments, role === 'customer' ? profile!.full_name : customerP?.full_name || 'Customer', role === 'customer' ? other?.full_name || 'Provider' : employeeP?.full_name || 'Provider')}
+        />
+      )}
     </div>
   );
 }

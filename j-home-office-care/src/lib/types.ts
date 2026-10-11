@@ -24,7 +24,7 @@ export interface Booking {
   id: string; reference: string; customer_id: string; employee_id: string; service_id: string;
   status: BookingStatus; quantity: number; details: Record<string, any>; address: string;
   scheduled_date: string | null; scheduled_time: string | null; notes: string | null;
-  estimated_price: number; deposit_amount: number; deposit_paid: boolean; created_at: string;
+  estimated_price: number; deposit_amount: number; deposit_paid: boolean; balance_paid: boolean; receipt_no: string | null; completed_at: string | null; created_at: string;
   services?: Service; customer?: Profile; employee?: Provider;
 }
 export interface Message { id: string; booking_id: string; sender_id: string; body: string; created_at: string; }

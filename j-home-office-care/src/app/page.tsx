@@ -5,6 +5,7 @@ import { Phone, Mail, ShieldCheck, Clock, ThumbsUp, UserCheck, ArrowRight, Messa
 import { supabase } from '@/lib/supabase';
 import { useAuth, homeFor } from '@/lib/auth';
 import { Logo } from '@/components/Logo';
+import { InstallButton } from '@/components/PWA';
 import { ServiceIcon, publicUrl } from '@/components/ui';
 import { categoryMeta, ksh, unitLabel } from '@/lib/utils';
 import type { PortfolioItem, Service } from '@/lib/types';
@@ -46,6 +47,7 @@ export default function Landing() {
             <a href="#contact" className="hover:text-gold-600">Contact</a>
           </nav>
           <div className="flex items-center gap-2">
+            <InstallButton />
             {profile ? <Link href={homeFor(profile)} className="btn-primary !py-2">My dashboard</Link> : (
               <>
                 <Link href="/login" className="btn-ghost !py-2">Sign in</Link>

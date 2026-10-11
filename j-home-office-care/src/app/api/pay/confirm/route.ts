@@ -16,6 +16,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Payment not found.' }, { status: 404 });
 
   await db.from('payments').update({ status: 'paid', mpesa_receipt: 'TEST' + Date.now().toString(36).toUpperCase() }).eq('id', payment.id);
-  await db.from('bookings').update({ deposit_paid: true }).eq('id', payment.booking_id);
+  await db.from('bookings').update(payment.kind === 'balance' ? { balance_paid: true } : { deposit_paid: true }).eq('id', payment.booking_id);
   return NextResponse.json({ ok: true });
 }

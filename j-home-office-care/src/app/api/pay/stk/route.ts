@@ -8,7 +8,8 @@ export async function POST(req: Request) {
     const user = await userFromRequest(req);
     if (!user) return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 });
 
-    const { bookingId, phone } = await req.json();
+    const { bookingId, phone, kind: rawKind } = await req.json();
+    const kind: 'deposit' | 'balance' = rawKind === 'balance' ? 'balance' : 'deposit';
     const msisdn = normalizeKePhone(String(phone || ''));
     if (!msisdn) return NextResponse.json({ error: 'Enter a valid M-Pesa number, e.g. 0712 345 678.' }, { status: 400 });
 
@@ -16,13 +17,26 @@ export async function POST(req: Request) {
     const { data: booking } = await db.from('bookings').select('*').eq('id', bookingId).single();
     if (!booking || booking.customer_id !== user.id)
       return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
-    if (booking.deposit_paid)
-      return NextResponse.json({ error: 'Deposit already paid.' }, { status: 400 });
-    if (booking.status === 'cancelled')
-      return NextResponse.json({ error: 'This booking was cancelled.' }, { status: 400 });
+
+    let amount: number;
+    if (kind === 'deposit') {
+      if (booking.deposit_paid) return NextResponse.json({ error: 'Deposit already paid.' }, { status: 400 });
+      if (booking.status === 'cancelled') return NextResponse.json({ error: 'This booking was cancelled.' }, { status: 400 });
+      amount = booking.deposit_amount;
+    } else {
+      if (!booking.deposit_paid) return NextResponse.json({ error: 'Please pay the deposit first.' }, { status: 400 });
+      if (booking.status !== 'completed')
+        return NextResponse.json({ error: 'The balance can be paid once your provider marks the job complete.' }, { status: 400 });
+      if (booking.balance_paid) return NextResponse.json({ error: 'Balance already paid.' }, { status: 400 });
+      amount = Math.max(booking.estimated_price - booking.deposit_amount, 0);
+      if (amount === 0) {
+        await db.from('bookings').update({ balance_paid: true }).eq('id', booking.id);
+        return NextResponse.json({ mode: 'none' });
+      }
+    }
 
     const { data: payment, error } = await db.from('payments').insert({
-      booking_id: booking.id, customer_id: user.id, amount: booking.deposit_amount, phone: msisdn,
+      booking_id: booking.id, customer_id: user.id, amount, phone: msisdn, kind,
     }).select().single();
     if (error || !payment) throw new Error('Could not start payment');
 
@@ -33,7 +47,7 @@ export async function POST(req: Request) {
 
     const site = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
     const checkoutId = await stkPush({
-      phone: msisdn, amount: booking.deposit_amount, reference: booking.reference,
+      phone: msisdn, amount, reference: booking.reference,
       callbackUrl: `${site}/api/pay/callback?token=${process.env.MPESA_CALLBACK_SECRET}`,
     });
     await db.from('payments').update({ checkout_request_id: checkoutId }).eq('id', payment.id);

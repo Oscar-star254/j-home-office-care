@@ -10,6 +10,7 @@ import { useAuth, homeFor } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { Logo } from './Logo';
 import { RoleBadge, Spinner } from './ui';
+import { InstallButton } from './PWA';
 import type { Notice, Role } from '@/lib/types';
 import { timeAgo } from '@/lib/utils';
 
@@ -160,7 +161,7 @@ export function DashboardShell({ role, children }: { role: Role; children: React
           <button className="rounded-lg p-2 hover:bg-forest-50 lg:hidden" onClick={() => setMenu(!menu)} aria-label="Menu">{menu ? <X /> : <Menu />}</button>
           <RoleBadge role={role} />
         </div>
-        <Bell_ />
+        <div className="flex items-center gap-2"><InstallButton /><Bell_ /></div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6 lg:px-8 lg:py-8">{children}</main>
     </div>

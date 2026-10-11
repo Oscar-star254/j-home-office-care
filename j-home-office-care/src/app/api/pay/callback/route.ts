@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ResultCode: 0, ResultDesc: 'Amount mismatch' });
     }
     await db.from('payments').update({ status: 'paid', mpesa_receipt: String(get('MpesaReceiptNumber') || '') }).eq('id', payment.id);
-    await db.from('bookings').update({ deposit_paid: true }).eq('id', payment.booking_id);
+    await db.from('bookings').update(payment.kind === 'balance' ? { balance_paid: true } : { deposit_paid: true }).eq('id', payment.booking_id);
     return NextResponse.json({ ResultCode: 0, ResultDesc: 'Success' });
   } catch {
     return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });

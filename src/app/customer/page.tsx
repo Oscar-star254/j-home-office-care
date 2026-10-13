@@ -26,20 +26,21 @@ export default function CustomerHome() {
 
   return (
     <div className="space-y-10">
-      {/* PHOTO HERO — team photo background */}
-      <section className="overflow-hidden rounded-3xl bg-forest text-white shadow-card md:relative md:min-h-[22rem]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/hero-team.jpg" alt="The J Home & Office Care team with their van and equipment" className="h-52 w-full object-cover object-[50%_35%] md:hidden" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/images/hero-team-wide.jpg" alt="" aria-hidden className="absolute inset-0 hidden h-full w-full object-cover object-[right_top] md:block" />
-        <div className="relative p-6 md:flex md:min-h-[22rem] md:max-w-xl md:flex-col md:justify-center md:p-10">
-          <p className="font-script text-3xl text-gold-300">We clean, You relax.</p>
-          <h1 className="mt-1 text-4xl uppercase md:text-5xl">Hello, <span className="text-gold">{profile?.full_name?.split(' ')[0] || 'there'}</span> 👋</h1>
-          <p className="mt-2 max-w-md text-white/80">What can we take off your hands today?</p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/customer/book/house-hunting" className="btn-gold">House hunting</Link>
-            <a href="#cleaning" className="btn border border-white/40 text-white hover:bg-white/10">Cleaning services</a>
+      {/* PHOTO HERO */}
+      <section className="relative overflow-hidden rounded-3xl bg-forest text-white shadow-card">
+        <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full border-[24px] border-gold/20" />
+        <div className="relative grid items-end md:grid-cols-[1.2fr_0.8fr]">
+          <div className="p-6 md:p-10">
+            <p className="font-script text-3xl text-gold-300">We clean, You relax.</p>
+            <h1 className="mt-1 text-4xl uppercase md:text-6xl">Hello, <span className="text-gold">{profile?.full_name?.split(' ')[0] || 'there'}</span> 👋</h1>
+            <p className="mt-2 max-w-md text-white/80">What can we take off your hands today?</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link href="/customer/book/house-hunting" className="btn-gold">House hunting</Link>
+              <a href="#cleaning" className="btn border border-white/40 text-white hover:bg-white/10">Cleaning services</a>
+            </div>
           </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/hero-cleaning.jpg" alt="" className="hidden h-72 w-full object-cover object-top md:block" />
         </div>
       </section>
 

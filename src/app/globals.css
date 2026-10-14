@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body { @apply bg-cream text-forest-800 font-body antialiased; }
+h1,h2,h3 { @apply font-display tracking-tight; }
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 font-semibold transition active:scale-[.98] disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-forest text-white hover:bg-forest-600; }
+  .btn-gold { @apply btn bg-gold text-forest-900 hover:bg-gold-400; }
+  .btn-ghost { @apply btn border border-forest/30 text-forest hover:bg-forest-50; }
+  .btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+  .card { @apply rounded-lg bg-white border border-forest/15; }
+  .input { @apply w-full rounded-lg border border-forest/25 bg-white px-3.5 py-2.5 outline-none focus:border-gold focus:ring-2 focus:ring-gold/30; }
+  .label { @apply mb-1 block text-sm font-semibold text-forest-700; }
+  .badge { @apply inline-block rounded-full px-3 py-1 text-xs font-bold; }
+}
+
+/* ---------- receipt printer ---------- */
+@keyframes paper-feed { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.paper-feed { animation: paper-feed 6s steps(80, end) forwards; }
+@keyframes bar-feed { from { width: 0; } to { width: 100%; } }
+.bar-feed { animation: bar-feed 6s steps(80, end) forwards; }
+@keyframes printer-shake { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(.7px, .5px); } 75% { transform: translate(-.7px, -.4px); } }
+.printer-shake { animation: printer-shake .09s linear infinite; }
+@keyframes led-blink { 50% { opacity: .2; } }
+.led-blink { animation: led-blink .4s steps(2) infinite; }
+@keyframes stamp-in { from { transform: scale(2.6) rotate(-8deg); opacity: 0; } to { transform: scale(1) rotate(-8deg); opacity: .88; } }
+.stamp-in { animation: stamp-in .32s cubic-bezier(.2, 1.4, .4, 1) forwards; }
+@media (prefers-reduced-motion: reduce) { .printer-shake, .led-blink { animation: none; } }
+
+.print-only { display: none; }
+@media print {
+  body > *:not(.print-only) { display: none !important; }
+  body { overflow: visible !important; background: #fff !important; }
+  .print-only { display: block !important; width: 76mm; margin: 0 auto; }
+  @page { size: 80mm auto; margin: 2mm; }
+}

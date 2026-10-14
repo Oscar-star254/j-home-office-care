@@ -18,7 +18,6 @@ const byCategory: Record<string, Field[]> = {
     { type: 'text', label: 'Second-choice area', placeholder: 'Optional (e.g. Juja, Thika Road)' },
     { type: 'number', label: 'Minimum rent budget (KSh)', required: true },
     { type: 'number', label: 'Maximum rent budget (KSh)', required: true },
-    { type: 'number', label: 'Number of people moving in', required: true },
     { type: 'chips', label: 'Must-haves', options: ['Water 24/7', 'Parking', 'Balcony', 'Tiled floors', 'CCTV / security', 'Near matatu stage', 'Pets allowed', 'Backup power', 'Near school'] },
     { type: 'date', label: 'Move-in date' },
   ],

@@ -14,7 +14,8 @@ export async function POST(req: Request) {
     if (!msisdn) return NextResponse.json({ error: 'Enter a valid M-Pesa number, e.g. 0712 345 678.' }, { status: 400 });
 
     const db = adminClient();
-    const { data: booking } = await db.from('bookings').select('*').eq('id', bookingId).single();
+    const { data: booking, error: bErr } = await db.from('bookings').select('*').eq('id', bookingId).single();
+    if (bErr && !booking) console.error('booking lookup failed', bErr);
     if (!booking || booking.customer_id !== user.id)
       return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
 
@@ -35,10 +36,25 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data: payment, error } = await db.from('payments').insert({
+    let { data: payment, error } = await db.from('payments').insert({
       booking_id: booking.id, customer_id: user.id, amount, phone: msisdn, kind,
     }).select().single();
-    if (error || !payment) throw new Error('Could not start payment');
+
+    // Database not updated with migration-002 yet (no "kind" column): a deposit can still go through.
+    if (error && /kind/i.test(error.message) && kind === 'deposit') {
+      ({ data: payment, error } = await db.from('payments').insert({
+        booking_id: booking.id, customer_id: user.id, amount, phone: msisdn,
+      }).select().single());
+    }
+    if (error || !payment) {
+      console.error('payments insert failed', error);
+      const m = error?.message || 'unknown error';
+      let hint = '';
+      if (/row-level security|permission denied|violates row-level/i.test(m)) hint = ' Check that SUPABASE_SERVICE_ROLE_KEY in Vercel is the service_role (secret) key, not the anon key, then redeploy.';
+      else if (/kind/i.test(m)) hint = ' Run supabase/migration-002-receipts.sql in the Supabase SQL editor.';
+      else if (/jwt|api key|invalid/i.test(m)) hint = ' The Supabase keys in Vercel look wrong. Re-enter them and redeploy.';
+      throw new Error(`Could not start payment: ${m}.${hint}`);
+    }
 
     if (!mpesaConfigured()) {
       // TEST MODE: no real money moves. The UI shows a "Simulate payment" button.
